@@ -22,11 +22,12 @@ def create_tables():
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS products (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            scraped_name TEXT NOT NULL,
-            canonical_id INTEGER,
+            scraped_name TEXT,
             brand_id INTEGER,
-            FOREIGN KEY (canonical_id) REFERENCES canonical_product(id),
-            FOREIGN KEY (brand_id) REFERENCES brand(id)
+            canonical_id INTEGER,
+            url TEXT,
+            FOREIGN KEY (brand_id) REFERENCES brands(id),
+            FOREIGN KEY (canonical_id) REFERENCES canonical_products(id)
         )
     ''')
     
@@ -35,6 +36,7 @@ def create_tables():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             product_id INTEGER,
             price REAL,
+            unit TEXT,
             date TEXT,
             FOREIGN KEY (product_id) REFERENCES product(id)  
         )
@@ -57,23 +59,23 @@ def add_brand(name):
     cursor.execute("SELECT id FROM brands WHERE name = ?", (name,))
     return cursor.fetchone()[0]
     
-def add_product(scraped_name, canonical_id, brand_id):
-    cursor.execute("INSERT OR IGNORE INTO products (scraped_name, canonical_id, brand_id) VALUES (?,?,?)", 
-                   (scraped_name, canonical_id, brand_id))
+def add_product(scraped_name, brand_id, canonical_id, url):
+    cursor.execute("INSERT OR IGNORE INTO products (scraped_name, brand_id, canonical_id, url) VALUES (?, ?, ?, ?)", 
+                   (scraped_name, brand_id, canonical_id, url))
     conn.commit()
     
-    cursor.execute("SELECT id FROM products (scraped_name, canonical_id, brand_id) WHERE (scraped_name, canonical_id, brand_id) = (?,?,?)", 
-                   (scraped_name, canonical_id, brand_id))
+    cursor.execute('''
+        SELECT id FROM products
+        WHERE scraped_name = ? AND brand_id = ? AND canonical_id = ? AND url = ?
+    ''', (scraped_name, brand_id, canonical_id, url))
     return cursor.fetchone()[0]
     
-def add_price(product_id, price, date):
-    cursor.execute("INSERT OR IGNORE INTO prices (product_id, store, date) VALUES (?, ?, ?)",
-                   (product_id, price, date))
+def add_price(product_id, price, unit, date):
+    cursor.execute(
+        "INSERT INTO prices (product_id, price, unit, date) VALUES (?, ?, ?, ?)",
+        (product_id, price, unit, date)
+    )
     conn.commit()
-    
-    cursor.execute("SELECT id FROM prices (product_id, store, date) WHERE  (product_id, store, date) = (?, ?, ?)",
-                   (product_id, price, date))    
-    return cursor.fetchone()[0]
 
 # === READS / GET ===
     
